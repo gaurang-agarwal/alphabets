@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alphabet Learner</title>
+    <title>Bright Alphabet Learner</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,6 +20,7 @@
             justify-content: center;
             align-items: center;
             user-select: none;
+            cursor: pointer;
         }
 
         #instruction {
@@ -28,11 +29,22 @@
             text-align: center;
             font-weight: bold;
             animation: pulse 2s infinite;
+            padding: 20px;
         }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
+        }
+
+        /* Hidden input box for capturing both mobile and desktop keystrokes */
+        #keyboard-trigger {
+            position: absolute;
+            top: -100px;
+            left: -100px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
         }
 
         #display-container {
@@ -121,7 +133,7 @@
             100% { transform: scale(1) translateY(0); opacity: 1; }
         }
 
-        /* Settings Toggle Button (BOTTOM LEFT) */
+        /* Settings Toggle Button */
         #settings-toggle-btn {
             position: absolute;
             bottom: 25px;
@@ -137,11 +149,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: transform 0.2s;
             z-index: 15;
-        }
-        #settings-toggle-btn:hover {
-            transform: scale(1.05) rotate(15deg);
         }
 
         /* Hideable Controls Panel Drawer */
@@ -158,8 +166,6 @@
             gap: 14px;
             z-index: 20;
             border: 2px solid #e2e8f0;
-            
-            /* Hidden behavior styling */
             opacity: 0;
             transform: translateY(15px) scale(0.95);
             pointer-events: none;
@@ -183,7 +189,6 @@
         .panel-title {
             font-weight: 800;
             color: #1e293b;
-            font-size: 1.1rem;
         }
         #close-panel-btn {
             background: #f1f5f9;
@@ -191,16 +196,7 @@
             border-radius: 50%;
             width: 28px;
             height: 28px;
-            font-weight: bold;
-            color: #64748b;
             cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #close-panel-btn:hover {
-            background: #e2e8f0;
-            color: #0f172a;
         }
 
         .control-group {
@@ -209,7 +205,6 @@
             gap: 4px;
             font-weight: bold;
             color: #4b5563;
-            font-size: 0.9rem;
         }
 
         #voice-select, #pitch-slider {
@@ -217,13 +212,7 @@
             padding: 8px 10px;
             border-radius: 8px;
             border: 2px solid #cbd5e1;
-            outline: none;
             background: #f8fafc;
-            cursor: pointer;
-        }
-        
-        #voice-select {
-            max-width: 260px;
         }
 
         /* Clear Button */
@@ -240,28 +229,20 @@
             border-radius: 50px;
             cursor: pointer;
             box-shadow: 0 6px 12px rgba(255, 61, 0, 0.3);
-            transition: all 0.2s ease;
             z-index: 20;
-        }
-
-        #clear-btn:hover {
-            transform: scale(1.05);
-            background-color: #e63600;
-            box-shadow: 0 8px 16px rgba(255, 61, 0, 0.4);
-        }
-
-        #clear-btn:active {
-            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
-    <div id="instruction">Press any letter key! 🌟</div>
+    <div id="instruction">Tap anywhere or start typing! 📱💻🌟</div>
+    
+    <input type="text" id="keyboard-trigger" autocomplete="off" autocapitalize="off" spellcheck="false">
+
     <div id="display-container"></div>
     <div id="history-panel"></div>
 
-    <button id="settings-toggle-btn" title="Open Settings">⚙️</button>
+    <button id="settings-toggle-btn">⚙️</button>
 
     <div id="controls-panel">
         <div class="panel-header">
@@ -291,35 +272,39 @@
         const voiceSelect = document.getElementById('voice-select');
         const pitchSlider = document.getElementById('pitch-slider');
         const pitchVal = document.getElementById('pitch-val');
+        const textInput = document.getElementById('keyboard-trigger');
 
-        const colors = [
-            '#FF2E93', '#FF8A00', '#FFCD00', '#00E676', 
-            '#00B0FF', '#2979FF', '#AA00FF', '#FF3D00'
-        ];
-
+        const colors = ['#FF2E93', '#FF8A00', '#FFCD00', '#00E676', '#00B0FF', '#2979FF', '#AA00FF', '#FF3D00'];
         const animations = ['anim-bounce-spin', 'anim-rubber', 'anim-wobble'];
         let availableVoices = [];
 
-        // --- RETRIEVE SAVED PITCH FROM LOCALSTORAGE ---
+        // Automatically keep the hidden text box focused on launch
+        textInput.focus();
+
+        // Clicking anywhere refocuses the hidden input (opens mobile keypad / catches desktop typing)
+        document.body.addEventListener('click', (e) => {
+            if (e.target.closest('#controls-panel') || e.target === settingsToggleBtn || e.target === clearBtn) {
+                return;
+            }
+            textInput.focus();
+        });
+
+        // --- RETRIEVE SAVED SETTINGS ---
         const savedPitch = localStorage.getItem('alphabet-pitch');
         if (savedPitch) {
             pitchSlider.value = savedPitch;
             pitchVal.textContent = savedPitch;
         }
 
-        // --- LOAD AVAILABLE VOICES & RETRIEVE SAVED VOICE ---
         function populateVoiceList() {
             availableVoices = window.speechSynthesis.getVoices();
             voiceSelect.innerHTML = '';
-
             const savedVoiceURI = localStorage.getItem('alphabet-voice-uri');
 
             availableVoices.forEach((voice, index) => {
                 const option = document.createElement('option');
                 option.textContent = `${voice.name} (${voice.lang})`;
                 option.value = index;
-                
-                // Prioritize saved voice, fallback to Google English or default system voice
                 if (savedVoiceURI && voice.voiceURI === savedVoiceURI) {
                     option.selected = true;
                 } else if (!savedVoiceURI && (voice.name.includes('Google US English') || voice.default)) {
@@ -334,7 +319,6 @@
             window.speechSynthesis.onvoiceschanged = populateVoiceList;
         }
 
-        // --- SAVE TO LOCALSTORAGE ON SETTINGS CHANGE ---
         pitchSlider.addEventListener('input', (e) => {
             pitchVal.textContent = e.target.value;
             localStorage.setItem('alphabet-pitch', e.target.value);
@@ -347,43 +331,32 @@
             }
         });
 
-        // --- PANEL DRAWER TOGGLE INTERACTION ---
-        settingsToggleBtn.addEventListener('click', () => {
+        settingsToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             controlsPanel.classList.toggle('show');
-            settingsToggleBtn.blur();
         });
 
-        closePanelBtn.addEventListener('click', () => {
+        closePanelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             controlsPanel.classList.remove('show');
         });
 
-        // KEYBOARD EVENT LISTENER
-        document.addEventListener('keydown', (event) => {
-            // Block alphabet rendering if the user typing inside settings panel fields
-            if (document.activeElement === voiceSelect || document.activeElement === pitchSlider) {
-                return;
-            }
-
-            if (event.key.length !== 1 || !/[a-zA-Z]/.test(event.key) || event.ctrlKey || event.metaKey) {
-                return;
-            }
+        function processLetter(inputKey) {
+            if (!/[a-zA-Z]/.test(inputKey)) return;
 
             instruction.style.display = 'none';
-
-            const letter = event.key.toUpperCase();
+            const letter = inputKey.toUpperCase();
             const randomColor = colors[Math.floor(Math.random() * colors.length)];
             const randomAnim = animations[Math.floor(Math.random() * animations.length)];
 
-            // Speech Production
+            // Speech Audio
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(`${letter}!`); 
             utterance.rate = 0.9;  
             utterance.pitch = parseFloat(pitchSlider.value); 
-            
             if (availableVoices[voiceSelect.value]) {
                 utterance.voice = availableVoices[voiceSelect.value];
             }
-
             window.speechSynthesis.speak(utterance);
 
             // Display Generation
@@ -401,6 +374,21 @@
                     letterEl.remove();
                 }
             }, 3500);
+        }
+
+        // --- SINGLE UNIFIED INPUT LISTENER (FIXES DUPLICATION) ---
+        textInput.addEventListener('input', (e) => {
+            // Block character updates if tweaking settings menu
+            if (document.activeElement === voiceSelect || document.activeElement === pitchSlider) {
+                return;
+            }
+
+            const val = e.target.value;
+            if (val.length > 0) {
+                const characterPressed = val.substring(val.length - 1);
+                processLetter(characterPressed);
+                e.target.value = ''; // Instantly flush character
+            }
         });
 
         function addToHistory(letter, color) {
@@ -408,7 +396,6 @@
             historyEl.className = 'history-letter';
             historyEl.style.color = color;
             historyEl.textContent = letter;
-
             historyPanel.appendChild(historyEl);
 
             if (historyPanel.children.length > 10) {
@@ -416,13 +403,15 @@
             }
         }
 
-        clearBtn.addEventListener('click', () => {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             displayContainer.innerHTML = '';
             historyPanel.innerHTML = '';
             instruction.style.display = 'block';
-            controlsPanel.classList.remove('show'); // Auto-close drawer if open
+            controlsPanel.classList.remove('show');
             window.speechSynthesis.cancel();
-            clearBtn.blur(); 
+            textInput.value = '';
+            textInput.focus(); // Keep input focused after clearing
         });
     </script>
 </body>
