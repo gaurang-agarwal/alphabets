@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alphabet Learner</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial Round', 'Comic Sans MS', sans-serif;
+            background-color: #f0fdf4; 
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        #instruction {
+            font-size: 2.5rem;
+            color: #4b5563;
+            text-align: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        #display-container {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .letter {
+            font-size: min(40vw, 40vh);
+            font-weight: 900;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+        }
+
+        /* --- ANIMATIONS --- */
+        .anim-bounce-spin {
+            animation: bounceSpin 3.5s ease-in-out forwards;
+        }
+        @keyframes bounceSpin {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            20% { transform: scale(1.3) rotate(180deg); opacity: 1; }
+            40% { transform: scale(0.9) rotate(360deg); }
+            60% { transform: scale(1.1) rotate(360deg); }
+            80% { transform: scale(1) rotate(360deg); opacity: 1; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        .anim-rubber {
+            animation: rubberBand 3.5s ease-in-out forwards;
+        }
+        @keyframes rubberBand {
+            0% { transform: scale3d(1, 1, 1); opacity: 0; }
+            10% { transform: scale3d(1.25, 0.75, 1); opacity: 1; }
+            20% { transform: scale3d(0.75, 1.25, 1); }
+            30% { transform: scale3d(1.15, 0.85, 1); }
+            40% { transform: scale3d(0.95, 1.05, 1); }
+            50% { transform: scale3d(1.05, 0.95, 1); }
+            85% { transform: scale3d(1, 1, 1); opacity: 1; }
+            100% { transform: scale3d(0, 0, 0); opacity: 0; }
+        }
+
+        .anim-wobble {
+            animation: wobble 3.5s ease-in-out forwards;
+        }
+        @keyframes wobble {
+            0% { transform: translateY(-100px); opacity: 0; }
+            15% { transform: translateY(0) translateX(-20px) rotate(-5deg); opacity: 1; }
+            30% { transform: translateX(15px) rotate(3deg); }
+            45% { transform: translateX(-10px) rotate(-3deg); }
+            60% { transform: translateX(5px) rotate(2deg); }
+            75% { transform: translateX(0); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* History Panel */
+        #history-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: row; 
+            gap: 10px;
+            max-width: 80vw;
+            overflow-x: auto;
+            padding: 10px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .history-letter {
+            font-size: 2.5rem;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 3px solid currentColor;
+            animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes slideIn {
+            0% { transform: scale(0) translateY(-20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Settings Toggle Button (BOTTOM LEFT) */
+        #settings-toggle-btn {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s;
+            z-index: 15;
+        }
+        #settings-toggle-btn:hover {
+            transform: scale(1.05) rotate(15deg);
+        }
+
+        /* Hideable Controls Panel Drawer */
+        #controls-panel {
+            position: absolute;
+            bottom: 95px;
+            left: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            z-index: 20;
+            border: 2px solid #e2e8f0;
+            
+            /* Hidden behavior styling */
+            opacity: 0;
+            transform: translateY(15px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #controls-panel.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .panel-title {
+            font-weight: 800;
+            color: #1e293b;
+            font-size: 1.1rem;
+        }
+        #close-panel-btn {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-weight: bold;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #close-panel-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-weight: bold;
+            color: #4b5563;
+            font-size: 0.9rem;
+        }
+
+        #voice-select, #pitch-slider {
+            font-family: inherit;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 2px solid #cbd5e1;
+            outline: none;
+            background: #f8fafc;
+            cursor: pointer;
+        }
+        
+        #voice-select {
+            max-width: 260px;
+        }
+
+        /* Clear Button */
+        #clear-btn {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background-color: #ff3d00;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(255, 61, 0, 0.3);
+            transition: all 0.2s ease;
+            z-index: 20;
+        }
+
+        #clear-btn:hover {
+            transform: scale(1.05);
+            background-color: #e63600;
+            box-shadow: 0 8px 16px rgba(255, 61, 0, 0.4);
+        }
+
+        #clear-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="instruction">Press any letter key! 🌟</div>
+    <div id="display-container"></div>
+    <div id="history-panel"></div>
+
+    <button id="settings-toggle-btn" title="Open Settings">⚙️</button>
+
+    <div id="controls-panel">
+        <div class="panel-header">
+            <span class="panel-title">Voice Settings</span>
+            <button id="close-panel-btn">✕</button>
+        </div>
+        <div class="control-group">
+            <label for="voice-select">🗣️ Choose Voice:</label>
+            <select id="voice-select"><option>Loading voices...</option></select>
+        </div>
+        <div class="control-group">
+            <label for="pitch-slider">🎵 Pitch: <span id="pitch-val">1.2</span></label>
+            <input type="range" id="pitch-slider" min="0.5" max="2" step="0.1" value="1.2">
+        </div>
+    </div>
+
+    <button id="clear-btn">Clear All ✖</button>
+
+    <script>
+        const displayContainer = document.getElementById('display-container');
+        const historyPanel = document.getElementById('history-panel');
+        const instruction = document.getElementById('instruction');
+        const clearBtn = document.getElementById('clear-btn');
+        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+        const controlsPanel = document.getElementById('controls-panel');
+        const closePanelBtn = document.getElementById('close-panel-btn');
+        const voiceSelect = document.getElementById('voice-select');
+        const pitchSlider = document.getElementById('pitch-slider');
+        const pitchVal = document.getElementById('pitch-val');
+
+        const colors = [
+            '#FF2E93', '#FF8A00', '#FFCD00', '#00E676', 
+            '#00B0FF', '#2979FF', '#AA00FF', '#FF3D00'
+        ];
+
+        const animations = ['anim-bounce-spin', 'anim-rubber', 'anim-wobble'];
+        let availableVoices = [];
+
+        // --- RETRIEVE SAVED PITCH FROM LOCALSTORAGE ---
+        const savedPitch = localStorage.getItem('alphabet-pitch');
+        if (savedPitch) {
+            pitchSlider.value = savedPitch;
+            pitchVal.textContent = savedPitch;
+        }
+
+        // --- LOAD AVAILABLE VOICES & RETRIEVE SAVED VOICE ---
+        function populateVoiceList() {
+            availableVoices = window.speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+
+            const savedVoiceURI = localStorage.getItem('alphabet-voice-uri');
+
+            availableVoices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = index;
+                
+                // Prioritize saved voice, fallback to Google English or default system voice
+                if (savedVoiceURI && voice.voiceURI === savedVoiceURI) {
+                    option.selected = true;
+                } else if (!savedVoiceURI && (voice.name.includes('Google US English') || voice.default)) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        populateVoiceList();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        // --- SAVE TO LOCALSTORAGE ON SETTINGS CHANGE ---
+        pitchSlider.addEventListener('input', (e) => {
+            pitchVal.textContent = e.target.value;
+            localStorage.setItem('alphabet-pitch', e.target.value);
+        });
+
+        voiceSelect.addEventListener('change', (e) => {
+            const selectedVoice = availableVoices[e.target.value];
+            if (selectedVoice) {
+                localStorage.setItem('alphabet-voice-uri', selectedVoice.voiceURI);
+            }
+        });
+
+        // --- PANEL DRAWER TOGGLE INTERACTION ---
+        settingsToggleBtn.addEventListener('click', () => {
+            controlsPanel.classList.toggle('show');
+            settingsToggleBtn.blur();
+        });
+
+        closePanelBtn.addEventListener('click', () => {
+            controlsPanel.classList.remove('show');
+        });
+
+        // KEYBOARD EVENT LISTENER
+        document.addEventListener('keydown', (event) => {
+            // Block alphabet rendering if the user typing inside settings panel fields
+            if (document.activeElement === voiceSelect || document.activeElement === pitchSlider) {
+                return;
+            }
+
+            if (event.key.length !== 1 || !/[a-zA-Z]/.test(event.key) || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            instruction.style.display = 'none';
+
+            const letter = event.key.toUpperCase();
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+
+            // Speech Production
+            window.speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(`${letter}!`); 
+            utterance.rate = 0.9;  
+            utterance.pitch = parseFloat(pitchSlider.value); 
+            
+            if (availableVoices[voiceSelect.value]) {
+                utterance.voice = availableVoices[voiceSelect.value];
+            }
+
+            window.speechSynthesis.speak(utterance);
+
+            // Display Generation
+            displayContainer.innerHTML = '';
+            const letterEl = document.createElement('div');
+            letterEl.className = `letter ${randomAnim}`;
+            letterEl.style.color = randomColor;
+            letterEl.textContent = letter;
+            displayContainer.appendChild(letterEl);
+
+            addToHistory(letter, randomColor);
+
+            setTimeout(() => {
+                if (displayContainer.contains(letterEl)) {
+                    letterEl.remove();
+                }
+            }, 3500);
+        });
+
+        function addToHistory(letter, color) {
+            const historyEl = document.createElement('div');
+            historyEl.className = 'history-letter';
+            historyEl.style.color = color;
+            historyEl.textContent = letter;
+
+            historyPanel.appendChild(historyEl);
+
+            if (historyPanel.children.length > 10) {
+                historyPanel.removeChild(historyPanel.firstChild);
+            }
+        }
+
+        clearBtn.addEventListener('click', () => {
+            displayContainer.innerHTML = '';
+            historyPanel.innerHTML = '';
+            instruction.style.display = 'block';
+            controlsPanel.classList.remove('show'); // Auto-close drawer if open
+            window.speechSynthesis.cancel();
+            clearBtn.blur(); 
+        });
+    </script>
+</body>
+</html>
